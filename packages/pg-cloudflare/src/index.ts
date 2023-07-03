@@ -1,6 +1,16 @@
 import { SocketOptions, Socket, TlsOptions } from 'cloudflare:sockets'
 import { EventEmitter } from 'events'
 
+interface Binding {
+  connect(): Socket;
+}
+
+// TODO(cleanup): Should somehow mark the return as a stream.Duplex to make
+// typescript happier when clients use this.
+export function streamFromBinding(binding?: Binding) {
+  return new CloudflareSocket(false, binding);
+}
+
 /**
  * Wrapper around the Cloudflare built-in socket that can be used by the `Connection`.
  */
@@ -14,7 +24,7 @@ export class CloudflareSocket extends EventEmitter {
   private _cfWriter: WritableStreamDefaultWriter | null = null
   private _cfReader: ReadableStreamDefaultReader | null = null
 
-  constructor(readonly ssl: boolean) {
+  constructor(readonly ssl: boolean, readonly binding?: Binding) {
     super()
   }
 
@@ -36,9 +46,13 @@ export class CloudflareSocket extends EventEmitter {
       log('connecting')
       if (connectListener) this.once('connect', connectListener)
 
-      const options: SocketOptions = this.ssl ? { secureTransport: 'starttls' } : {}
-      const { connect } = await import('cloudflare:sockets')
-      this._cfSocket = connect(`${host}:${port}`, options)
+      if (this.binding !== undefined) {
+        this._cfSocket = this.binding.connect();
+      } else {
+        const options: SocketOptions = this.ssl ? { secureTransport: 'starttls' } : {}
+        const { connect } = await import('cloudflare:sockets')
+        this._cfSocket = connect(`${host}:${port}`, options)
+      }
       this._cfWriter = this._cfSocket.writable.getWriter()
       this._addClosedHandler()
 
