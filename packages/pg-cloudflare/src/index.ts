@@ -14,7 +14,7 @@ export class CloudflareSocket extends EventEmitter {
   private _cfWriter: WritableStreamDefaultWriter | null = null
   private _cfReader: ReadableStreamDefaultReader | null = null
 
-  constructor(readonly ssl: boolean) {
+  constructor(readonly ssl: boolean, readonly bindingConnectFn?: () => Socket) {
     super()
   }
 
@@ -36,9 +36,13 @@ export class CloudflareSocket extends EventEmitter {
       log('connecting')
       if (connectListener) this.once('connect', connectListener)
 
-      const options: SocketOptions = this.ssl ? { secureTransport: 'starttls' } : {}
-      const { connect } = await import('cloudflare:sockets')
-      this._cfSocket = connect(`${host}:${port}`, options)
+      if (this.bindingConnectFn !== undefined) {
+        this._cfSocket = this.bindingConnectFn();
+      } else {
+        const options: SocketOptions = this.ssl ? { secureTransport: 'starttls' } : {}
+        const { connect } = await import('cloudflare:sockets')
+        this._cfSocket = connect(`${host}:${port}`, options)
+      }
       this._cfWriter = this._cfSocket.writable.getWriter()
       this._addClosedHandler()
 

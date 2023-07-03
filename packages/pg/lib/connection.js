@@ -16,7 +16,7 @@ class Connection extends EventEmitter {
     super()
     config = config || {}
 
-    this.stream = config.stream || getStream(config.ssl)
+    this.stream = config.stream || getStream(config)
     if (typeof this.stream === 'function') {
       this.stream = this.stream(config)
     }

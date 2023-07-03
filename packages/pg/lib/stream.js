@@ -2,13 +2,13 @@
  * Get a socket stream compatible with the current runtime environment.
  * @returns {Duplex}
  */
-module.exports.getStream = function getStream(ssl) {
+module.exports.getStream = function getStream(config) {
   const net = require('net')
   if (typeof net.Socket === 'function') {
     return new net.Socket()
   } else {
     const { CloudflareSocket } = require('pg-cloudflare')
-    return new CloudflareSocket(ssl)
+    return new CloudflareSocket(config.ssl, config.connectFn)
   }
 }
 
